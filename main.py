@@ -29,18 +29,18 @@ processor = JobListingProcessor(rewrite_prompt=rewrite_prompt, job_listing_json_
 
 # List of job retrieval functions to iterate over
 job_retrieval_functions = {
-    # "centrumtandzorg": get_centrumtandzorg,
-    # "dentalvacancies_eu": get_dentalvacancies_eu,
-    # "detandartsengroep": get_detandartsengroep,
-    # "freshtandartsen": get_freshtandartsen,
-    # "lassus": get_lassus,
-    # "mondzorggilde": get_mondzorggilde,
-    # "omnios": get_omnios,
-    # "orthocenter": get_orthocenter,
-    # "puur": get_puur,
-    # "toportho": get_toportho,
+    "centrumtandzorg": get_centrumtandzorg,
+    "dentalvacancies_eu": get_dentalvacancies_eu,
+    "detandartsengroep": get_detandartsengroep,
+    "freshtandartsen": get_freshtandartsen,
+    "lassus": get_lassus,
+    "mondzorggilde": get_mondzorggilde,
+    "omnios": get_omnios,
+    "orthocenter": get_orthocenter,
+    "puur": get_puur,
+    "toportho": get_toportho,
     "werkenbijdentalclinics": get_werkenbijdentalclinics,
-    # "werkenbijpda": get_werkenbijpda
+    "werkenbijpda": get_werkenbijpda
 }
 print("Starting to scrape jobs, from each website one by one.")
 
