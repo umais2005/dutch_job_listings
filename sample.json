@@ -1,0 +1,144 @@
+{
+    "id": 9871,
+    "date": "2024-11-08T09:13:12",
+    "date_gmt": "2024-11-08T09:13:12",
+    "guid": {
+        "rendered": "https://mondzorgvacatures.com/vacature/new-job-listing-title-2/",
+        "raw": "https://mondzorgvacatures.com/vacature/new-job-listing-title-2/"
+    },
+    "modified": "2024-11-08T09:13:12",
+    "modified_gmt": "2024-11-08T09:13:12",
+    "password": "",
+    "slug": "new-job-listing-title-2",
+    "status": "publish",
+    "type": "job_listing",
+    "link": "https://mondzorgvacatures.com/vacature/new-job-listing-title-2/",
+    "title": {
+        "raw": "New Job Listing Title",
+        "rendered": "New Job Listing Title"
+    },
+    "content": {
+        "raw": "Job description here",
+        "rendered": "<p>Job description here</p>\n",
+        "protected": false,
+        "block_version": 0
+    },
+    "author": 10,
+    "featured_media": 0,
+    "template": "",
+    "meta": {
+        "om_disable_all_campaigns": false,
+        "_monsterinsights_skip_tracking": false,
+        "_monsterinsights_sitenote_active": false,
+        "_monsterinsights_sitenote_note": "",
+        "_monsterinsights_sitenote_category": 0,
+        "_promoted": "",
+        "_job_location": "New York",
+        "_application": "",
+        "_filled": 0,
+        "_featured": 0,
+        "_job_expires": "2024-12-31",
+        "_remote_position": 0,
+        "_job_salary": "50000",
+        "_job_salary_currency": "",
+        "_job_salary_unit": "",
+        "_hours": "",
+        "_apply_link": "",
+        "_job_cover_image": "",
+        "_company_manager_id": ""
+    },
+    "job-categories": [],
+    "job_listing_tag": [],
+    "permalink_template": "https://mondzorgvacatures.com/vacature/%pagename%/",
+    "generated_slug": "new-job-listing-title-2",
+    "class_list": [
+        "post-9871",
+        "job_listing",
+        "type-job_listing",
+        "status-publish",
+        "hentry"
+    ],
+    "aioseo_notices": [],
+    "_links": {
+        "self": [
+            {
+                "href": "https://mondzorgvacatures.com/wp-json/wp/v2/job-listings/9871"
+            }
+        ],
+        "collection": [
+            {
+                "href": "https://mondzorgvacatures.com/wp-json/wp/v2/job-listings"
+            }
+        ],
+        "about": [
+            {
+                "href": "https://mondzorgvacatures.com/wp-json/wp/v2/types/job_listing"
+            }
+        ],
+        "author": [
+            {
+                "embeddable": true,
+                "href": "https://mondzorgvacatures.com/wp-json/wp/v2/users/10"
+            }
+        ],
+        "wp:attachment": [
+            {
+                "href": "https://mondzorgvacatures.com/wp-json/wp/v2/media?parent=9871"
+            }
+        ],
+        "wp:term": [
+            {
+                "taxonomy": "job_listing_category",
+                "embeddable": true,
+                "href": "https://mondzorgvacatures.com/wp-json/wp/v2/job-categories?post=9871"
+            },
+            {
+                "taxonomy": "job_listing_tag",
+                "embeddable": true,
+                "href": "https://mondzorgvacatures.com/wp-json/wp/v2/job_listing_tag?post=9871"
+            }
+        ],
+        "wp:action-publish": [
+            {
+                "href": "https://mondzorgvacatures.com/wp-json/wp/v2/job-listings/9871"
+            }
+        ],
+        "wp:action-unfiltered-html": [
+            {
+                "href": "https://mondzorgvacatures.com/wp-json/wp/v2/job-listings/9871"
+            }
+        ],
+        "wp:action-assign-author": [
+            {
+                "href": "https://mondzorgvacatures.com/wp-json/wp/v2/job-listings/9871"
+            }
+        ],
+        "wp:action-create-job-categories": [
+            {
+                "href": "https://mondzorgvacatures.com/wp-json/wp/v2/job-listings/9871"
+            }
+        ],
+        "wp:action-assign-job-categories": [
+            {
+                "href": "https://mondzorgvacatures.com/wp-json/wp/v2/job-listings/9871"
+            }
+        ],
+        "wp:action-create-job_listing_tag": [
+            {
+                "href": "https://mondzorgvacatures.com/wp-json/wp/v2/job-listings/9871"
+            }
+        ],
+        "wp:action-assign-job_listing_tag": [
+            {
+                "href": "https://mondzorgvacatures.com/wp-json/wp/v2/job-listings/9871"
+            }
+        ],
+        "curies": [
+            {
+                "name": "wp",
+                "href": "https://api.w.org/{rel}",
+                "templated": true
+            }
+        ]
+    }
+}
