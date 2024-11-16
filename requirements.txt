@@ -1,0 +1,7 @@
+python-dotenv
+selenium
+bs4
+requests
+langchain_groq
+langchain_openai
+langchain

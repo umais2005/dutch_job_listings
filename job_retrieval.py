@@ -1,3 +1,4 @@
+import concurrent.futures
 import requests
 from bs4 import BeautifulSoup
 import logging
@@ -10,7 +11,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
+import concurrent
 import logging
 
 # Suppress logging from Selenium
@@ -543,65 +544,6 @@ def get_omnios():
     
     return job_listings
 
-def get_werkenbijdentalclinics():
-    options = Options()
-    options.add_argument("--headless")  # Run in headless mode
-    driver = webdriver.Chrome(options=options)
-
-    url = "https://www.werkenbijdentalclinics.nl/?tax_query%5B1%5D%5Btaxonomy%5D=category&tax_query%5B1%5D%5Bterms%5D=&tax_query%5B2%5D%5Btaxonomy%5D=worklocation&tax_query%5B2%5D%5Bterms%5D=&tax_query%5B3%5D%5Btaxonomy%5D=region&tax_query%5B3%5D%5Bterms%5D=&s=&allowedMeta=YTowOnt9&allowedTaxonomies=YTozOntpOjA7czo4OiJjYXRlZ29yeSI7aToxO3M6MTI6Indvcmtsb2NhdGlvbiI7aToyO3M6NjoicmVnaW9uIjt9&allowedPostType=czo0OiJwb3N0Ijs%3D&posttype=post"
-    # Open the target website
-    driver.get(url)
-    job_links = []
-    page_number = 1  # Start from the first page
-    job_listings = []
-
-    try:
-    # Close the cookie dialog if it appears
-        try:
-            cookie_button = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.ID, "CybotCookiebotDialogBodyButtonAccept"))
-            )
-            cookie_button.click()
-            print("Cookie dialog closed.")
-        except:
-            print("No cookie dialog found or it could not be closed.")
-
-        while True:
-            # Wait until articles inside the 'content' div are loaded
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div#content article h2.entry-title a"))
-            )
-            
-            # Extract all job links on the current page
-            articles = driver.find_elements(By.CSS_SELECTOR, "div#content article h2.entry-title a")
-            for article in articles:
-                link = article.get_attribute("href")
-                job_listing = job_content_for_werkenbijdentalclinics(link)
-                job_links.append(link)
-                job_listings.append({"job_url": link,"job_listing":job_listing})
-            
-            print(f"Page {page_number} has {len(articles)} jobs.")
-            
-            # Increment page number to find the next page
-            page_number += 1
-            try:
-                # Try to find the next page button by the text of the next page number
-                next_button = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.LINK_TEXT, str(page_number)))
-                )
-                next_button.click()
-                time.sleep(2)  # Allow time for the next page to load
-            except:
-                print("No more pages to load or 'Next' button not found.")
-                break  # Break the loop if no more next button is found
-    except Exception as e:
-        print("Error in scraping:", e)
-    
-    finally:
-        driver.quit()
-    
-    print(len(job_listings), f"Jobs listings scraped from {url}")
-    return job_listings
 
 def job_content_for_werkenbijdentalclinics(link):
     response = requests.get(link)
@@ -620,7 +562,7 @@ def job_content_for_werkenbijdentalclinics(link):
             if text:
                 job_content += text + "\n\n"  # Newline after each heading or paragraph
                         
-    print("Job from {} scraped".format(link))
+    # print("Job from {} scraped".format(link))
     # print(job_content)
     return job_content
 
@@ -745,15 +687,91 @@ def get_orthocenter():
 
     return job_listings
 
-if __name__=="__main__":
+def get_werkenbijdentalclinics(check_duplicates=True):
+    
+    if check_duplicates:
+        from rewrite import JobListingProcessor
+        job_processor = JobListingProcessor(use_for_existience_check=True)
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-gpu")
+    prefs = {"profile.managed_default_content_settings.images": 2}
+    options.add_experimental_option("prefs", prefs)
+
+    driver = webdriver.Chrome(options=options)
+    url = "https://www.werkenbijdentalclinics.nl/?tax_query%5B1%5D%5Btaxonomy%5D=category&tax_query%5B1%5D%5Bterms%5D=&tax_query%5B2%5D%5Btaxonomy%5D=worklocation&tax_query%5B2%5D%5Bterms%5D=&tax_query%5B3%5D%5Btaxonomy%5D=region&tax_query%5B3%5D%5Bterms%5D=&s=&allowedMeta=YTowOnt9&allowedTaxonomies=YTozOntpOjA7czo4OiJjYXRlZ29yeSI7aToxO3M6MTI6Indvcmtsb2NhdGlvbiI7aToyO3M6NjoicmVnaW9uIjt9&allowedPostType=czo0OiJwb3N0Ijs%3D&posttype=post"
+    driver.get(url)
+    job_links = []
+    job_listings = []
+    page_number = 1
+
+    try:
+        try:
+            cookie_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.ID, "CybotCookiebotDialogBodyButtonAccept"))
+            )
+            cookie_button.click()
+        except:
+            print("No cookie dialog found or it could not be closed.")
+
+        while True:
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div#content article h2.entry-title a"))
+            )
+            articles = driver.find_elements(By.CSS_SELECTOR, "div#content article h2.entry-title a")
+            for article in articles:
+                link = article.get_attribute("href")
+                if check_duplicates:
+                    is_processed_in_wp, is_processed_in_manatal = job_processor.is_job_processed(link)
+                    if is_processed_in_wp and is_processed_in_manatal:
+                        print(f"Skipping already processed link: {link}")
+                        continue
+                job_links.append(link)
+
+            print(f"Page {page_number} has {len(articles)} jobs.")
+            page_number += 1
+            try:
+                next_button = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.LINK_TEXT, str(page_number)))
+                )
+                next_button.click()
+            except:
+                break
+
+        # Concurrently process job links
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            results = list(executor.map(job_content_for_werkenbijdentalclinics, job_links))
+
+        job_listings = [{"job_url": link, "job_listing": result} for link, result in zip(job_links, results) if result]
+    except Exception as e:
+        print("Error in scraping:", type(e))
+    finally:
+        driver.quit()
+
+    return job_listings
+
+
+if __name__ == "__main__":
+    start_time = time.time()  # Record the start time
+
     # listings = get_lassus()
-    listings = get_puur()
+    # listings = get_puur()
     # listings = get_dentalvacancies_eu()
     # listings = get_werkenbijpda()
     # listings = get_omnios()
+    listings = get_werkenbijdentalclinics(check_duplicates=False)
     # listings = get_werkenbijdentalclinics()
     # listings = get_toportho()
     # listings = get_orthocenter()
+
+    end_time = time.time()  # Record the end time
+
+    # Calculate and print the elapsed time
+    elapsed_time = end_time - start_time
+    print(f"Execution Time: {elapsed_time:.2f} seconds")
+
+    # Output results
     print(len(listings))
-    print(listings[0])
-    
+    if listings:
+        print(listings[0])

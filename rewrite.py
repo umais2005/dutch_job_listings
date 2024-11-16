@@ -1,3 +1,4 @@
+from urllib.parse import urlparse, urlunparse
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
@@ -5,34 +6,35 @@ import re
 import hashlib
 import os
 import json
-from prompts import to_html
+import prompts
 from datetime import date
 
 
 
 class JobListingProcessor:
-    def __init__(self, rewrite_prompt, job_listing_json_prompt, html_prompt, model="llama3-70b-8192", temperature=0.2, test=False):
-        self.api_key = os.getenv("OPEN_API_KEY") if not test else os.getenv("GROQ_API_KEY")
-        self.model = model
-        self.rewrite_prompt = rewrite_prompt
-        self.job_listing_json_prompt = job_listing_json_prompt
-        self.html_prompt = html_prompt
-        self.temperature = temperature
-        if test:
-            self.llm = ChatGroq(model=self.model, temperature=self.temperature, api_key=self.api_key)
-        else:
-            self.llm = ChatOpenAI(api_key=self.api_key, model="gpt-4o", temperature=self.temperature)
+    def __init__(self, rewrite_prompt=prompts.rewrite_prompt, job_listing_json_prompt=prompts.job_listing_json_prompt, html_prompt=prompts.to_html, model="llama3-70b-8192", temperature=0.2, test=False, use_for_existience_check=False):
+        if not use_for_existience_check: 
+            self.api_key = os.getenv("OPEN_API_KEY") if not test else os.getenv("GROQ_API_KEY")
+            self.model = model
+            self.rewrite_prompt = rewrite_prompt
+            self.job_listing_json_prompt = job_listing_json_prompt
+            self.html_prompt = html_prompt
+            self.temperature = temperature
+            if test:
+                self.llm = ChatGroq(model=self.model, temperature=self.temperature, api_key=self.api_key)
+            else:
+                self.llm = ChatOpenAI(api_key=self.api_key, model="gpt-4o", temperature=self.temperature)
+            rewrite_prompt = PromptTemplate(input_variables=["job_listing"], template=self.rewrite_prompt)
+            self.rewrite_chain = rewrite_prompt | self.llm
+            mapping_prompt = PromptTemplate(input_variables=["job_listing"], template=self.job_listing_json_prompt)
+            self.mapping_chain = mapping_prompt | self.llm
+            job_to_html = PromptTemplate(input_variables=["text"], template=self.html_prompt)
+            self.html_conversion_chain = job_to_html | self.llm
         self.job_mapping_file_wp = "job_url_to_id_mapping_wp.json"
         self.job_mapping_file_manatal = "job_url_to_id_mapping_manatal.json"
         self.job_url_to_id_mapping_wp = self.load_job_url_to_id_mapping_wp()
         self.job_url_to_id_mapping_manatal = self.load_job_url_to_id_mapping_manatal()
         self.jobs_mapping = self.load_jobs_json()
-        rewrite_prompt = PromptTemplate(input_variables=["job_listing"], template=self.rewrite_prompt)
-        self.rewrite_chain = rewrite_prompt | self.llm
-        mapping_prompt = PromptTemplate(input_variables=["job_listing"], template=self.job_listing_json_prompt)
-        self.mapping_chain = mapping_prompt | self.llm
-        job_to_html = PromptTemplate(input_variables=["text"], template=self.html_prompt)
-        self.html_conversion_chain = job_to_html | self.llm
 
     def load_job_url_to_id_mapping_wp(self):
         """Load the job_url to job_id mapping from a JSON file if it exists."""
@@ -131,29 +133,41 @@ class JobListingProcessor:
         # Invoke the chain with the text content
         
 
+    def is_job_processed(self, job_url):
+        """
+        Check if a job URL is already processed in WordPress or Manatal mappings.
+        Returns a tuple with two booleans: (is_processed_in_wp, is_processed_in_manatal)
+        """
+        is_processed_in_wp = job_url in self.job_url_to_id_mapping_wp
+        is_processed_in_manatal = job_url in self.job_url_to_id_mapping_manatal
+        return is_processed_in_wp, is_processed_in_manatal
+
     def process_job(self, job, check_duplicates=True):
-        job_url = job['job_url']
+        job_url = self.normalize_url_robust(job['job_url'])
         print("Processing job for the url:", job_url)
         job_content = job['job_listing']
         with open("original.txt", "w", encoding="utf-8") as o:
             o.write(job_content)
 
-        # Check for duplicates in WordPress and Manatal mappings
-        duplicate_in_wp = job_url in self.job_url_to_id_mapping_wp and check_duplicates
-        duplicate_in_manatal = job_url in self.job_url_to_id_mapping_manatal and check_duplicates
-        
-        # Determine which platform(s) need processing
-        if duplicate_in_wp and duplicate_in_manatal:
-            print(f"Job at {job_url} already processed for both WordPress and Manatal. Skipping.")
-            return None, None, ""
-        elif not duplicate_in_wp and not duplicate_in_manatal:
-            processing_status = "Both"
-        elif not duplicate_in_wp:
-            print(f"Job at {job_url} processing for wp.")
-            processing_status = "WordPress"
+        is_processed_in_wp, is_processed_in_manatal = False, False
+
+        # Check if the job is already processed
+        if check_duplicates:
+            is_processed_in_wp, is_processed_in_manatal = self.is_job_processed(job_url)
+
+            if is_processed_in_wp and is_processed_in_manatal:
+                print(f"Job at {job_url} already processed for both WordPress and Manatal. Skipping.")
+                return None, None, ""
+            elif not is_processed_in_wp and not is_processed_in_manatal:
+                processing_status = "Both"
+            elif not is_processed_in_wp:
+                print(f"Job at {job_url} processing for WordPress.")
+                processing_status = "WordPress"
+            else:
+                print(f"Job at {job_url} processing for Manatal.")
+                processing_status = "Manatal"
         else:
-            print(f"Job at {job_url} processing for manatal.")
-            processing_status = "Manatal"
+            processing_status = "Both"
 
         # Generate unique job ID from the job URL
         job_id = hashlib.md5(job_url.encode()).hexdigest()
@@ -172,13 +186,13 @@ class JobListingProcessor:
                 self.save_jobs_json()
             
             # Save to WordPress mapping if not a duplicate
-            if not duplicate_in_wp:
+            if not is_processed_in_wp:
                 self.job_url_to_id_mapping_wp[job_url] = job_id
                 self.job_url_to_id_mapping_wp['date'] = d
                 self.save_job_url_to_id_mapping_wp()
                 
             # Save to Manatal mapping if not a duplicate
-            if not duplicate_in_manatal:
+            if not is_processed_in_manatal:
                 self.job_url_to_id_mapping_manatal[job_url] = job_id
                 self.job_url_to_id_mapping_manatal['date'] = d
                 self.save_job_url_to_id_mapping_manatal()
@@ -187,7 +201,24 @@ class JobListingProcessor:
         else:
             print(f"Failed to process Job from {job_url}")
             return job_url, None, "Failed"
-# Usage example
+
+    def normalize_url_robust(self,url):
+        """
+        Normalize a URL by removing query parameters and fragments.
+        
+        Args:
+            url (str): The input URL.
+        
+        Returns:
+            str: The normalized URL, keeping only the path.
+        """
+        parsed_url = urlparse(url)
+        # Reconstruct the URL without query or fragment
+        normalized_url = urlunparse((parsed_url.scheme, parsed_url.netloc, parsed_url.path, '', '', ''))
+        return normalized_url
+    # Usage example
+
+
 
 if __name__ == "__main__":
     from dotenv    import load_dotenv
@@ -196,8 +227,13 @@ if __name__ == "__main__":
     import os
     from job_retrieval import get_centrumtandzorg, get_puur, get_orthocenter, get_dentalvacancies_eu, get_freshtandartsen, get_lassus
 
-    processor = JobListingProcessor(rewrite_prompt=rewrite_prompt, job_listing_json_prompt=job_listing_json_prompt, html_prompt=to_html, test=False)
-    url, dic, status= processor.process_job(get_dentalvacancies_eu()[3], check_duplicates=False)
+    processor = JobListingProcessor(rewrite_prompt=rewrite_prompt, job_listing_json_prompt=job_listing_json_prompt, html_prompt=to_html, test=True)
+    url, dic, status= processor.process_job(get_centrumtandzorg()[3], check_duplicates=False)
+    # Example usage
+    url = "https://www.werkenbijdentalclinics.nl/vacatures/tandarts-velden-15359/?_rt=OTB8OXwgfDE3MzE3Nzg5Mjc&_rt_nonce=10ac2e9b4c"
+    normalized_url = processor.normalize_url_robust(url)
+    print(normalized_url)
+
     if status:
         print(dic['Job title'])
         print(dic['Job description'])
